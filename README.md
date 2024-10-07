@@ -27,7 +27,7 @@ Here are some screenshots of the Keypoint Annotation Tool in action:
 
 ![Main Interface](./Interface%20Images//Main%20Interface.png)
 
-*The main interface showing an image being annotated with keypoints and skeleton structure.*
+*The main interface image.*
 
 ### LMG Skeleton Annotation
 
