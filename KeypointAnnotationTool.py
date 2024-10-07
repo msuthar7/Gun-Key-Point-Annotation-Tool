@@ -5,10 +5,11 @@ import os
 from PyQt5.QtWidgets import (
     QApplication, QLabel, QMainWindow, QPushButton, QFileDialog,
     QVBoxLayout, QWidget, QHBoxLayout, QScrollArea, QFrame, QCheckBox,
-    QDialog, QLineEdit, QMessageBox, QProgressBar, QSizePolicy
+    QDialog, QLineEdit, QMessageBox, QProgressBar, QSizePolicy, QColorDialog,
+    QInputDialog  # Added QInputDialog for font size input
 )
 from PyQt5.QtGui import (
-    QPixmap, QImage, QPainter, QPen
+    QPixmap, QImage, QPainter, QPen, QColor, QFont  # Added QFont for setting font size
 )
 from PyQt5.QtCore import Qt, QPoint, QTimer, pyqtSignal
 
@@ -129,6 +130,9 @@ class ImageLabel(QLabel):
             # Record the action for undo
             self.main_window.annotation_history.append(('move_keypoint', self.selected_skeleton, self.selected_keypoint, old_coords, (x_move, y_move)))
             self.main_window.redo_stack.clear()
+            self.main_window.annotations_modified = True  # Mark as modified
+            # Update cache
+            self.main_window.annotations_dict[self.main_window.image_file_path] = self.main_window.skeletons.copy()
             self.update()
 
     def mouseReleaseEvent(self, event):
@@ -143,6 +147,11 @@ class ImageLabel(QLabel):
             painter.scale(self.zoom_level, self.zoom_level)
             painter.translate(self.offset_x / self.zoom_level, self.offset_y / self.zoom_level)
 
+            # Set the font size using the main window's font size
+            font = QFont()
+            font.setPointSize(self.main_window.font_size)
+            painter.setFont(font)
+
             # Draw all skeletons
             for skeleton in self.main_window.skeletons:
                 # Draw keypoints
@@ -153,8 +162,9 @@ class ImageLabel(QLabel):
                         x, y = coords
                         painter.drawEllipse(QPoint(int(x), int(y)), 5, 5)
 
-                        # Set color for text
-                        text_pen = QPen(Qt.white)
+                        # Set color for text using the selected text color
+                        text_color = self.main_window.text_color
+                        text_pen = QPen(text_color)
                         painter.setPen(text_pen)
 
                         # Draw the annotation text
@@ -199,6 +209,12 @@ class KeypointAnnotationTool(QMainWindow):
         self.image_file_paths = []  # List of image file paths
         self.current_image_index = -1  # Index of the current image
         self.current_skeleton_type = 'LMG'  # Default skeleton type
+        self.copied_annotations = None  # For copy/paste functionality
+        self.text_color = QColor(Qt.red)  # Default text color for annotations
+        self.font_size = 10 # Default font size for annotations
+
+        self.annotations_modified = False  # Track if annotations have been modified
+        self.annotations_dict = {}  # Cache for annotations
 
         # Make connections accessible to ImageLabel
         self.connections = connections
@@ -315,6 +331,16 @@ class KeypointAnnotationTool(QMainWindow):
         self.keyboard_shortcuts_button.clicked.connect(self.show_keyboard_shortcuts)
         self.left_panel.addWidget(self.keyboard_shortcuts_button)
 
+        # Button to change text color
+        self.text_color_button = QPushButton('Change Text Color', self)
+        self.text_color_button.clicked.connect(self.open_color_picker)
+        self.left_panel.addWidget(self.text_color_button)
+
+        # Button to change font size
+        self.font_size_button = QPushButton('Change Font Size', self)
+        self.font_size_button.clicked.connect(self.open_font_size_dialog)
+        self.left_panel.addWidget(self.font_size_button)
+
         # Add the left panel to the main layout
         self.left_panel_container = QWidget()
         self.left_panel_container.setLayout(self.left_panel)
@@ -323,6 +349,7 @@ class KeypointAnnotationTool(QMainWindow):
         # Create the image label inside a scrollable area
         self.scroll_area = QScrollArea(self)
         self.image_label = ImageLabel(self)  # Pass 'self' as 'main_window'
+
         # Connect signals
         self.image_label.keypoint_selected.connect(self.keypoint_selected)
         self.scroll_area.setWidgetResizable(True)
@@ -336,6 +363,20 @@ class KeypointAnnotationTool(QMainWindow):
         self.setCentralWidget(self.central_widget)
 
         self.show()
+
+    def open_font_size_dialog(self):
+        """Open a dialog to change the font size."""
+        font_size, ok = QInputDialog.getInt(
+            self, 'Change Font Size', 'Enter font size (e.g., 10):', min=1, max=100, value=self.font_size)
+        if ok:
+            self.font_size = font_size
+            self.image_label.update()
+
+    def open_color_picker(self):
+        color = QColorDialog.getColor(initial=self.text_color, title='Select Text Color', parent=self)
+        if color.isValid():
+            self.text_color = color
+            self.image_label.update()
 
     def open_extract_frames_dialog(self):
         dialog = ExtractFramesDialog(self)
@@ -378,8 +419,6 @@ class KeypointAnnotationTool(QMainWindow):
             self.zoom_level = 1.0  # Reset zoom when a new image is loaded
             self.offset_x = 0
             self.offset_y = 0
-            self.skeletons = []
-            self.deleted_skeleton_ids = set()
             self.annotation_history = []
             self.redo_stack = []
             self.display_image()
@@ -389,9 +428,17 @@ class KeypointAnnotationTool(QMainWindow):
             self.image_label.update()
             self.setWindowTitle(f"Annotating: {os.path.basename(self.image_file_path)}")
 
-            if self.save_folder:
-                # Load existing annotations if they exist
-                self.load_annotations()
+            # Retrieve annotations from cache
+            if self.image_file_path in self.annotations_dict:
+                self.skeletons = self.annotations_dict[self.image_file_path]
+                self.image_label.update()
+            else:
+                self.skeletons = []
+                self.deleted_skeleton_ids = set()
+                # Load existing annotations from file if they exist
+                if self.save_folder:
+                    self.load_annotations()
+            self.annotations_modified = False  # Reset the modified flag
         else:
             self.show_toast("No images to load.")
 
@@ -400,9 +447,12 @@ class KeypointAnnotationTool(QMainWindow):
             self.show_toast("No Image Loaded")
             return
 
-        # Save current annotations if auto-save is enabled
-        if self.auto_save:
+        # Save current annotations if modified
+        if self.annotations_modified:
             self.save_annotations()
+
+        # Store current annotations in cache
+        self.annotations_dict[self.image_file_path] = self.skeletons.copy()
 
         self.current_image_index += 1
         if self.current_image_index >= len(self.image_file_paths):
@@ -414,9 +464,12 @@ class KeypointAnnotationTool(QMainWindow):
             self.show_toast("No Image Loaded")
             return
 
-        # Save current annotations if auto-save is enabled
-        if self.auto_save:
+        # Save current annotations if modified
+        if self.annotations_modified:
             self.save_annotations()
+
+        # Store current annotations in cache
+        self.annotations_dict[self.image_file_path] = self.skeletons.copy()
 
         self.current_image_index -= 1
         if self.current_image_index < 0:
@@ -468,6 +521,9 @@ class KeypointAnnotationTool(QMainWindow):
             self.annotation_history.append(('add_skeleton', skeleton))
             # Clear redo stack
             self.redo_stack.clear()
+            self.annotations_modified = True  # Mark as modified
+            # Update cache
+            self.annotations_dict[self.image_file_path] = self.skeletons.copy()
             # Update display
             self.image_label.update()
         else:
@@ -525,8 +581,11 @@ class KeypointAnnotationTool(QMainWindow):
         self.selected_skeleton = None
         self.selected_keypoint = None
 
-        # Delete the annotation file if auto-save is enabled
-        if self.auto_save and self.save_folder:
+        # Update annotations cache
+        self.annotations_dict[self.image_file_path] = self.skeletons.copy()
+
+        # Delete the annotation file if it exists
+        if self.save_folder:
             image_name = os.path.basename(self.image_file_path)
             base_name = os.path.splitext(image_name)[0]
             label_file_path = os.path.join(self.save_folder, f"{base_name}.txt")
@@ -534,6 +593,7 @@ class KeypointAnnotationTool(QMainWindow):
                 os.remove(label_file_path)
                 print(f"Annotation file {label_file_path} deleted due to reset.")
 
+        self.annotations_modified = True  # Mark annotations as modified
         self.image_label.update()
 
     def undo_action(self):
@@ -559,6 +619,9 @@ class KeypointAnnotationTool(QMainWindow):
             elif action_type == 'reset':
                 self.skeletons = action[1]
                 self.deleted_skeleton_ids = set()
+            self.annotations_modified = True  # Mark as modified
+            # Update cache
+            self.annotations_dict[self.image_file_path] = self.skeletons.copy()
             self.image_label.update()
         else:
             self.show_toast("No actions to undo.")
@@ -586,6 +649,9 @@ class KeypointAnnotationTool(QMainWindow):
             elif action_type == 'reset':
                 self.skeletons = []
                 self.deleted_skeleton_ids = set()
+            self.annotations_modified = True  # Mark as modified
+            # Update cache
+            self.annotations_dict[self.image_file_path] = self.skeletons.copy()
             self.image_label.update()
         else:
             self.show_toast("No actions to redo.")
@@ -621,6 +687,10 @@ class KeypointAnnotationTool(QMainWindow):
             "Ctrl + Shift + I: Select Image Folder\n"
             "Ctrl + Shift + S: Select Save Folder\n"
             "Ctrl + A: Toggle Auto Save Annotations\n"
+            "Ctrl + Shift + C: Change Text Color\n"
+            "Ctrl + F: Change Font Size\n"  # Added shortcut for changing font size
+            "Ctrl + C: Copy Annotations\n"
+            "Ctrl + V: Paste Annotations\n"
             ". (Period): Show Keyboard Shortcuts\n"
             "Ctrl + E: Extract Frames\n"
             "Ctrl + Shift + R: Resize Images\n"
@@ -658,6 +728,11 @@ class KeypointAnnotationTool(QMainWindow):
                 if os.path.exists(label_file_path):
                     os.remove(label_file_path)
                     print(f"Removed existing annotation file {label_file_path} due to no annotations.")
+                self.annotations_modified = False  # Reset the modified flag
+                return
+
+            if not self.annotations_modified:
+                # No changes to annotations, no need to save
                 return
 
             image_name = os.path.basename(self.image_file_path)
@@ -666,6 +741,7 @@ class KeypointAnnotationTool(QMainWindow):
                 self.image.shape[1], self.image.shape[0]
             )
             self.show_toast("Annotations saved.")
+            self.annotations_modified = False  # Reset the modified flag
         else:
             self.show_toast("No image loaded.")
 
@@ -769,6 +845,9 @@ class KeypointAnnotationTool(QMainWindow):
                 # Clear redo stack
                 self.redo_stack.clear()
                 self.selected_keypoint = None
+                self.annotations_modified = True  # Mark as modified
+                # Update cache
+                self.annotations_dict[self.image_file_path] = self.skeletons.copy()
                 self.image_label.update()
 
         elif key == Qt.Key_A and not modifiers:
@@ -828,6 +907,58 @@ class KeypointAnnotationTool(QMainWindow):
         elif key == Qt.Key_R and modifiers == (Qt.ControlModifier | Qt.ShiftModifier):
             # Ctrl + Shift + 'R' for resize images
             self.open_resize_dialog()
+
+        elif key == Qt.Key_C and modifiers == (Qt.ControlModifier | Qt.ShiftModifier):
+            # Ctrl + Shift + 'C' for changing text color
+            self.open_color_picker()
+
+        elif key == Qt.Key_C and modifiers == Qt.ControlModifier:
+            # Ctrl + 'C' for copying annotations
+            self.copy_annotations()
+
+        elif key == Qt.Key_V and modifiers == Qt.ControlModifier:
+            # Ctrl + 'V' for pasting annotations
+            self.paste_annotations()
+        
+        elif key == Qt.Key_F and modifiers == Qt.ControlModifier:
+            # Ctrl + 'F' for changing font size
+            self.open_font_size_dialog()
+
+    def copy_annotations(self):
+        if self.image is None:
+            self.show_toast("No Image Loaded")
+            return
+        if self.skeletons:
+            # Deep copy the skeletons
+            import copy
+            self.copied_annotations = copy.deepcopy(self.skeletons)
+            self.show_toast("Annotations copied.")
+        else:
+            self.show_toast("No annotations to copy.")
+
+    def paste_annotations(self):
+        if self.image is None:
+            self.show_toast("No Image Loaded")
+            return
+        if self.copied_annotations:
+            # Adjust annotations if necessary
+            import copy
+            pasted_skeletons = copy.deepcopy(self.copied_annotations)
+            self.skeletons.extend(pasted_skeletons)
+            # Update skeleton IDs to avoid conflicts
+            for skeleton in pasted_skeletons:
+                skeleton.id = self.get_next_skeleton_id()
+            # Record the action for undo
+            self.annotation_history.append(('paste_annotations', pasted_skeletons))
+            # Clear redo stack
+            self.redo_stack.clear()
+            self.annotations_modified = True  # Mark as modified
+            # Update cache
+            self.annotations_dict[self.image_file_path] = self.skeletons.copy()
+            self.image_label.update()
+            self.show_toast("Annotations pasted.")
+        else:
+            self.show_toast("No annotations to paste.")
 
 def save_yolo_format(save_folder, image_name, skeletons, image_width, image_height):
     """
