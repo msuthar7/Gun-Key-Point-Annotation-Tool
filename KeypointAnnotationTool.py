@@ -771,15 +771,17 @@ class KeypointAnnotationTool(QMainWindow):
                     if class_index == 0:
                         skeleton_type = 'LMG'
                         skeleton_parts = ["butt", "pistol grip", "trigger", "cover", "rear sight",
-                                          "barrel jacket", "left bipod", "right bipod"]
-                    else:
+                                        "barrel jacket", "left bipod", "right bipod"]
+                    elif class_index == 1:
                         skeleton_type = 'Rifle'
                         skeleton_parts = ["butt", "rear sight", "pistol grip", "trigger", "front handguard", "barrel"]
+                    else:
+                        continue  # Unknown class index, skip
                     # Initialize annotations
                     annotations = {}
                     num_keypoints = len(skeleton_parts)
                     for i in range(num_keypoints):
-                        idx = i * 2
+                        idx = i * 2  # Two values per keypoint (x, y)
                         if idx + 1 < len(keypoints):
                             x_str, y_str = keypoints[idx], keypoints[idx + 1]
                             x = float(x_str)
@@ -984,16 +986,17 @@ def save_yolo_format(save_folder, image_name, skeletons, image_width, image_heig
         xs = []
         ys = []
 
-        # Assign class index based on the skeleton type
+        # Always assign class index 0 for all skeletons (both LMG and Rifle)
+        class_index = 0
+
+        # Define the skeleton parts based on the type
         if skeleton.skeleton_type == 'LMG':
             skeleton_parts = ["butt", "pistol grip", "trigger", "cover", "rear sight",
                               "barrel jacket", "left bipod", "right bipod"]
-            class_index = 0  # LMG class index
-        else:
+        else:  # Rifle skeleton
             skeleton_parts = ["butt", "rear sight", "pistol grip", "trigger", "front handguard", "barrel"]
-            class_index = 1  # Rifle class index
 
-        # Process keypoints
+        # Process keypoints for each skeleton
         for part in skeleton_parts:
             coords = skeleton.annotations.get(part)
             if coords is not None:
@@ -1009,9 +1012,6 @@ def save_yolo_format(save_folder, image_name, skeletons, image_width, image_heig
 
                 # Append normalized keypoints to list
                 keypoints.extend([f"{normalized_x:.6f}", f"{normalized_y:.6f}"])
-            else:
-                # If keypoint is missing, append -1 -1
-                keypoints.extend(["-1", "-1"])
 
         # If there are valid keypoints, calculate bounding box
         if xs and ys:
@@ -1251,7 +1251,6 @@ class ResizeDialog(QDialog):
                     ratio = height / float(h)
                     width = int(w * ratio)
             resized_image = cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
-            cv2.imwrite(image_file, resized_image)
 
         QMessageBox.information(self, 'Success', f'Resized {len(image_files)} images.')
         self.close()
