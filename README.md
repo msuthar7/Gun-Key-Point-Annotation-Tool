@@ -1,8 +1,8 @@
-# Keypoint Annotation Tool
+# Gun Keypoint Annotation Tool
 
 ## Overview
 
-The **Keypoint Annotation Tool** is a powerful and flexible desktop application designed for annotating keypoints on images, particularly useful for creating skeleton-based annotations. Built with **PyQt5** and **OpenCV**, this tool supports both **LMG** and **Rifle** skeleton structures, but it can be easily adapted for other object types. It features a user-friendly interface with advanced functionalities like zooming, panning, undo/redo, and image dataset management, making it suitable for computer vision projects involving pose estimation and object detection.
+The **Gun Keypoint Annotation Tool** is a powerful and flexible desktop application designed for annotating keypoints on images, particularly useful for creating skeleton-based annotations. Built with **PyQt5** and **OpenCV**, this tool supports both **LMG** and **Rifle** skeleton structures, but it can be easily adapted for other object types. It features a user-friendly interface with advanced functionalities like zooming, panning, undo/redo, and image dataset management, making it suitable for computer vision projects involving pose estimation and object detection.
 
 In addition to the source code, an executable file (`exe`) is available in the repository, so users can run the tool without setting up a Python environment.
 
@@ -14,7 +14,6 @@ In addition to the source code, an executable file (`exe`) is available in the r
 - **Undo/Redo Functionality**: Quickly undo or redo any changes to annotations.
 - **Image Dataset Navigation**: Seamlessly navigate through your dataset with 'Next' and 'Previous' buttons or keyboard shortcuts.
 - **Real-Time & Manual Annotation Saving**: Automatically save annotations or save them manually to YOLO format files.
-- **Cache for Temporary Annotations**: Annotations are temporarily stored in memory, ensuring you don't lose any unsaved data while navigating images.
 - **Frame Extraction**: Extract frames from video files and save them as images for annotation.
 - **Batch Image Resizing**: Resize entire image folders while maintaining aspect ratios, if desired.
 - **Text Color and Font Size Customization**: Change the text color and font size of annotations to suit your needs.
