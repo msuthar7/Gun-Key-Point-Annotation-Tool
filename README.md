@@ -18,7 +18,7 @@ In addition to the source code, an executable file (`exe`) is available in the r
 - **Batch Image Resizing**: Resize entire image folders while maintaining aspect ratios, if desired.
 - **Text Color and Font Size Customization**: Change the text color and font size of annotations to suit your needs.
 - **Class Number Consistency**: Both skeleton types (LMG and Rifle) are labeled with class number 0 to ensure efficient training of keypoint detection models, as it’s recommended to train one model at a time.
-- **Executable File**: No need to install dependencies! You can download and run the `.exe` file directly from the repository.
+- **Executable File**: No need to install dependencies! You can download and run the `.exe` file directly from the repository (dist\KeypointAnnotationTool.exe).
 
 ## Screenshots
 
