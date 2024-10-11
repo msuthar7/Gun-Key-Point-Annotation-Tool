@@ -2,13 +2,13 @@
 
 ## Overview
 
-The **Gun Keypoint Annotation Tool** is a powerful and flexible desktop application designed for annotating keypoints on images, particularly useful for creating skeleton-based annotations. Built with **PyQt5** and **OpenCV**, this tool supports both **LMG** and **Rifle** skeleton structures, but it can be easily adapted for other object types. It features a user-friendly interface with advanced functionalities like zooming, panning, undo/redo, and image dataset management, making it suitable for computer vision projects involving pose estimation and object detection.
+The **Gun Keypoint Annotation Tool** is a powerful and flexible desktop application designed for annotating gun part keypoints on images, particularly useful for creating skeleton-based annotations. Built with **PyQt5** and **OpenCV**, this tool supports **LMG** and **Rifle** skeleton structures for now. It features a user-friendly interface with advanced functionalities like zooming, panning, undo/redo, and image dataset management, making it suitable for computer vision projects involving object keypoint detection.
 
 In addition to the source code, an executable file (`exe`) is available in the repository, so users can run the tool without setting up a Python environment.
 
 ## Key Features
 
-- **Multi-Skeleton Annotation**: Annotate images using predefined skeletons for different object types (e.g., LMG, Rifle). 
+- **Multi-Skeleton Annotation**: Annotate images using predefined skeletons for LMG and Rifle. 
 - **Customizable Keypoint Positions**: Easily adjust keypoint locations with mouse clicks and drags.
 - **Zoom & Pan Support**: Zoom into images and pan across them for more detailed annotations.
 - **Undo/Redo Functionality**: Quickly undo or redo any changes to annotations.
@@ -18,7 +18,7 @@ In addition to the source code, an executable file (`exe`) is available in the r
 - **Batch Image Resizing**: Resize entire image folders while maintaining aspect ratios, if desired.
 - **Text Color and Font Size Customization**: Change the text color and font size of annotations to suit your needs.
 - **Class Number Consistency**: Both skeleton types (LMG and Rifle) are labeled with class number 0 to ensure efficient training of keypoint detection models, as it’s recommended to train one model at a time.
-- **Executable File**: No need to install dependencies! You can download and run the `.exe` file directly from the repository (dist\KeypointAnnotationTool.exe).
+- **Executable File**: No need to install dependencies! You can download and run the `.exe` file directly from the repository `dist\KeypointAnnotationTool.exe`.
 
 ## Screenshots
 
@@ -56,7 +56,7 @@ Here are some screenshots of the Keypoint Annotation Tool in action:
 
 ## Supported Image Formats
 
-`.png`, `.jpg`, `.jpeg`, `.bmp`, `.heif`
+`.png`, `.jpg`, `.jpeg`, `.heif`
 
 ## Keyboard Shortcuts
 
